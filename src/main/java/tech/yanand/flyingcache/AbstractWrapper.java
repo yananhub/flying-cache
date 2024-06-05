@@ -1,4 +1,4 @@
-package tech.qianmi.flyingcache;
+package tech.yanand.flyingcache;
 
 abstract class AbstractWrapper<T> {
 

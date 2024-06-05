@@ -1,4 +1,4 @@
-package tech.qianmi.flyingcache;
+package tech.yanand.flyingcache;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.web.context.request.RequestContextHolder;

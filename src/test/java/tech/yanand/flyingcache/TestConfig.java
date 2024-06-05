@@ -1,4 +1,4 @@
-package tech.qianmi.flyingcache;
+package tech.yanand.flyingcache;
 
 import org.springframework.boot.SpringBootConfiguration;
 import org.springframework.cache.annotation.EnableCaching;

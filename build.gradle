@@ -2,8 +2,12 @@ plugins {
     id 'java'
 }
 
-group = 'tech.qianmi.flyingcache'
-version = '1.0-SNAPSHOT'
+group = 'tech.yanand'
+version = '1.0'
+
+java {
+    sourceCompatibility = '17'
+}
 
 repositories {
     mavenCentral()
@@ -14,7 +18,7 @@ dependencies {
     implementation 'org.springframework:spring-web:6.1.7'
     implementation 'org.slf4j:slf4j-api:2.0.12'
 
-    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.5'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.6'
     testImplementation 'jakarta.servlet:jakarta.servlet-api:6.1.0-M2'
 }
 

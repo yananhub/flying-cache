@@ -1,4 +1,4 @@
-package tech.qianmi.flyingcache;
+package tech.yanand.flyingcache;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
-class RequestCacheTest {
+class SessionCacheTest {
 
     @Autowired
     private SampleCache sampleCache;
@@ -31,7 +31,7 @@ class RequestCacheTest {
     }
 
     @Test
-    void testRequestScope() {
+    void testSessionScope() {
         mockRequestScope();
 
         assertTrue(sameReturnForTwiceCall());
@@ -56,8 +56,8 @@ class RequestCacheTest {
     }
 
     private boolean sameReturnForTwiceCall() {
-        TestModel data = sampleCache.getThreadData();
-        TestModel dataFromCache = sampleCache.getThreadData();
+        TestModel data = sampleCache.getSessionData();
+        TestModel dataFromCache = sampleCache.getSessionData();
 
         assertSame(dataFromCache, data);
 

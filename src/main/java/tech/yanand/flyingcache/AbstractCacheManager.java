@@ -1,4 +1,4 @@
-package tech.qianmi.flyingcache;
+package tech.yanand.flyingcache;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,7 +30,7 @@ abstract class AbstractCacheManager implements CacheManager {
         RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
 
         if (requestAttributes != null) {
-            ConcurrentMap<String, Cache> caches = (ConcurrentMap<String, Cache>) requestAttributes.getAttribute(getCacheKey(), getScope());
+            ConcurrentMap<String, Cache> caches = getCacheFromRequest(requestAttributes);
             if (caches == null) {
                 caches = new ConcurrentHashMap<>();
                 requestAttributes.setAttribute(getCacheKey(), caches, getScope());
@@ -59,20 +59,20 @@ abstract class AbstractCacheManager implements CacheManager {
     @Override
     public Collection<String> getCacheNames() {
         RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-        ConcurrentMap<String, Cache> caches;
-
-        if (requestAttributes != null) {
-            caches = (ConcurrentMap<String, Cache>) requestAttributes.getAttribute(getCacheKey(), getScope());
-        } else {
-            caches = threadCacheHolder.get();
-        }
-
+        ConcurrentMap<String, Cache> caches = requestAttributes != null
+                ? getCacheFromRequest(requestAttributes)
+                : threadCacheHolder.get();
         return caches != null ? caches.keySet() : List.of();
     }
 
     protected abstract String getCacheKey();
 
     protected abstract int getScope();
+
+    @SuppressWarnings("unchecked")
+    private ConcurrentMap<String, Cache> getCacheFromRequest(RequestAttributes requestAttributes) {
+        return (ConcurrentMap<String, Cache>) requestAttributes.getAttribute(getCacheKey(), getScope());
+    }
 
     private boolean isCallingInWrapper() {
         return Arrays.stream(Thread.currentThread().getStackTrace())
