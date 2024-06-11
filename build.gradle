@@ -1,12 +1,28 @@
+buildscript {
+    dependencies {
+        classpath 'org.apache.httpcomponents.client5:httpclient5:5.3'
+    }
+}
+
+import groovy.json.JsonSlurper
+import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
+import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
+import org.apache.hc.core5.http.io.entity.EntityUtils
+import org.apache.hc.client5.http.impl.classic.HttpClients
+
 plugins {
-    id 'java'
+    id 'java-library'
+    id 'maven-publish'
+    id 'signing'
 }
 
 group = 'tech.yanand'
-version = '1.0'
+version = '0.1.1.beta'
 
 java {
     sourceCompatibility = '17'
+    withJavadocJar()
+    withSourcesJar()
 }
 
 repositories {
@@ -24,4 +40,143 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+
+            versionMapping {
+                usage('java-api') {
+                    fromResolutionOf('runtimeClasspath')
+                }
+                usage('java-runtime') {
+                    fromResolutionResult()
+                }
+            }
+
+            pom {
+                name = 'Flying Cache'
+                description = 'Spring cache extension for request and thread scoped'
+                url = 'https://github.com/yananhub/flying-cache'
+
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'yananhub'
+                        name = 'Richard Zhang'
+                        email = 'yanandwy@163.com'
+                    }
+                }
+                scm {
+                    connection = 'scm:git:https://github.com/yananhub/flying-cache.git'
+                    developerConnection = 'scm:git:https://github.com/yananhub/flying-cache.git'
+                    url = 'https://github.com/yananhub/flying-cache'
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "Local"
+            def repoDir = version.endsWith('SNAPSHOT') ? 'repos/snapshots' : 'repos/releases'
+            url = layout.buildDirectory.dir(repoDir)
+        }
+
+        maven {
+            name = "GitHubPackages"
+            url = "https://maven.pkg.github.com/yananhub/flying-cache"
+            credentials {
+                username = System.getenv("GHUB_ACTOR")
+                password = System.getenv("GHUB_TOKEN")
+            }
+        }
+    }
+}
+
+signing {
+    def signingKey = System.getenv('SIGNING_KEY').replace("\\n", "\n")
+    def signingPassword = System.getenv('SIGNING_PASSWORD')
+    useInMemoryPgpKeys(signingKey, signingPassword)
+
+    sign publishing.publications.mavenJava
+}
+
+javadoc {
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+}
+
+tasks.register('repoZip', Zip) {
+    def repoDir = version.endsWith('SNAPSHOT') ? 'repos/snapshots' : 'repos/releases'
+    from layout.buildDirectory.dir(repoDir)
+    exclude '**/*.asc.*'
+}
+
+tasks.register('uploadToCentralPortal') {
+    dependsOn repoZip
+
+    doLast {
+        def uploadUrl = 'https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC'
+        def statusUrl = 'https://central.sonatype.com/api/v1/publisher/status?id='
+        def uploadToken = System.getenv('MAVEN_UPLOAD_TOKEN')
+        File file = repoZip.archivePath
+
+        try (def httpclient = HttpClients.createDefault()) {
+            def httpPost = ClassicRequestBuilder.post(uploadUrl)
+                    .setHeader('Authorization', "Bearer ${uploadToken}")
+                    .setEntity(MultipartEntityBuilder.create().addBinaryBody('bundle', file).build())
+                    .build()
+            def deploymentId = httpclient.execute(httpPost, response -> {
+                def responseBody = EntityUtils.toString(response.getEntity())
+
+                if (response.getCode() != 201) {
+                    throw new RuntimeException("Response status: ${response.getCode()}, Response body: ${responseBody}")
+                } else {
+                    logger.info("Response status: ${response.getCode()}, Response body: ${responseBody}")
+                    return responseBody
+                }
+            })
+
+            def count = 0
+            while (count < 5) {
+                httpPost = ClassicRequestBuilder.post(statusUrl + deploymentId)
+                        .setHeader('Authorization', "Bearer ${uploadToken}")
+                        .build()
+                def deploymentState = httpclient.execute(httpPost, response -> {
+                    def responseBody = EntityUtils.toString(response.getEntity())
+
+                    if (response.getCode() != 200) {
+                        throw new RuntimeException("Response status: ${response.getCode()}, Response body: ${responseBody}")
+                    } else {
+                        def jsonObject = new JsonSlurper().parseText(responseBody)
+
+                        if (jsonObject.deploymentState == 'FAILED') {
+                            throw new RuntimeException("Upload status: ${jsonObject.deploymentState}, Response body: ${responseBody}")
+                        } else {
+                            println("Upload status: ${jsonObject.deploymentState}, Response body: ${responseBody}")
+                            return jsonObject.deploymentState
+                        }
+                    }
+                })
+
+                if (deploymentState == 'PUBLISHING' || deploymentState == 'PUBLISHED') {
+                    logger.info("Upload file success!")
+                    println("Upload file success, current status: ${deploymentState}")
+                    return
+                } else {
+                    count++
+                    Thread.sleep(5000)
+                }
+            }
+        }
+    }
 }
