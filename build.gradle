@@ -17,7 +17,7 @@ plugins {
 }
 
 group = 'tech.yanand'
-version = '0.1.1.beta'
+version = '0.1.1.beta.1'
 
 java {
     sourceCompatibility = '17'
