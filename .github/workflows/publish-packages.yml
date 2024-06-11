@@ -30,12 +30,12 @@ jobs:
       - name: Publish to Local and GitHub Packages
         run: ./gradlew publish
         env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           GHUB_ACTOR: ${{ github.actor }}
           GHUB_TOKEN: ${{ secrets.GHUB_TOKEN }}
 
       - name: Upload to Maven Central Portal
         run: ./gradlew uploadToCentralPortal
         env:
-          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
-          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
           MAVEN_UPLOAD_TOKEN: ${{ secrets.MAVEN_UPLOAD_TOKEN }}
