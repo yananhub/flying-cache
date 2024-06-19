@@ -8,6 +8,10 @@ plugins {
 group = 'tech.yanand'
 version = '0.1.1-beta.2'
 
+repositories {
+    mavenCentral()
+}
+
 dependencies {
     implementation 'org.springframework:spring-context:6.1.8'
     implementation 'org.springframework:spring-web:6.1.8'
