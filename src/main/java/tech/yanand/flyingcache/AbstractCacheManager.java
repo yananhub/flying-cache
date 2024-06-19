@@ -21,6 +21,9 @@ abstract class AbstractCacheManager implements CacheManager {
 
     private static final ThreadLocal<ConcurrentMap<String, Cache>> threadCacheHolder = new NamedThreadLocal<>("Thread caches");
 
+    /**
+     * Clear the cache from thread local.
+     */
     public static void clearThreadCache() {
         threadCacheHolder.remove();
     }
@@ -65,8 +68,19 @@ abstract class AbstractCacheManager implements CacheManager {
         return caches != null ? caches.keySet() : List.of();
     }
 
+    /**
+     * Get the cache key for storing the request cache.
+     *
+     * @return The cache key.
+     */
     protected abstract String getCacheKey();
 
+    /**
+     * Get the type of scope for storing the cache.
+     *
+     * @return The scope that must be
+     * {@link RequestAttributes#SCOPE_REQUEST} or {@link RequestAttributes#SCOPE_SESSION}.
+     */
     protected abstract int getScope();
 
     @SuppressWarnings("unchecked")

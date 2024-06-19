@@ -1,41 +1,26 @@
-buildscript {
-    dependencies {
-        classpath 'org.apache.httpcomponents.client5:httpclient5:5.3'
-    }
-}
-
-import groovy.json.JsonSlurper
-import org.apache.hc.client5.http.entity.mime.MultipartEntityBuilder
-import org.apache.hc.core5.http.io.support.ClassicRequestBuilder
-import org.apache.hc.core5.http.io.entity.EntityUtils
-import org.apache.hc.client5.http.impl.classic.HttpClients
-
 plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
+    id 'tech.yanand.gradle.maven-central-publish' version '0.1.0-beta.3'
 }
 
 group = 'tech.yanand'
-version = '0.1.1.beta.1'
+version = '0.1.1-beta.2'
+
+dependencies {
+    implementation 'org.springframework:spring-context:6.1.8'
+    implementation 'org.springframework:spring-web:6.1.8'
+    implementation 'org.slf4j:slf4j-api:2.0.13'
+
+    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.6'
+    testImplementation 'jakarta.servlet:jakarta.servlet-api:6.1.0-M2'
+}
 
 java {
     sourceCompatibility = '17'
     withJavadocJar()
     withSourcesJar()
-}
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    implementation 'org.springframework:spring-context:6.1.7'
-    implementation 'org.springframework:spring-web:6.1.7'
-    implementation 'org.slf4j:slf4j-api:2.0.12'
-
-    testImplementation 'org.springframework.boot:spring-boot-starter-test:3.2.6'
-    testImplementation 'jakarta.servlet:jakarta.servlet-api:6.1.0-M2'
 }
 
 test {
@@ -52,7 +37,7 @@ publishing {
                     fromResolutionOf('runtimeClasspath')
                 }
                 usage('java-runtime') {
-                    fromResolutionResult()
+                    fromResolutionResult
                 }
             }
 
@@ -86,16 +71,17 @@ publishing {
     repositories {
         maven {
             name = "Local"
-            def repoDir = version.endsWith('SNAPSHOT') ? 'repos/snapshots' : 'repos/releases'
-            url = layout.buildDirectory.dir(repoDir)
+            url = layout.buildDirectory.dir('repos/bundles')
         }
 
-        maven {
-            name = "GitHubPackages"
-            url = "https://maven.pkg.github.com/yananhub/flying-cache"
-            credentials {
-                username = System.getenv("GHUB_ACTOR")
-                password = System.getenv("GHUB_TOKEN")
+        if (System.getenv("GHUB_ACTOR")) {
+            maven {
+                name = "GitHubPackages"
+                url = "https://maven.pkg.github.com/yananhub/flying-cache"
+                credentials {
+                    username = System.getenv("GHUB_ACTOR")
+                    password = System.getenv("GHUB_TOKEN")
+                }
             }
         }
     }
@@ -103,7 +89,7 @@ publishing {
 
 signing {
     if (System.getenv('SIGNING_KEY')) {
-        def signingKey = System.getenv('SIGNING_KEY').replace("\\n", "\n")
+        def signingKey = System.getenv('SIGNING_KEY').replace('\\n', '\n')
         def signingPassword = System.getenv('SIGNING_PASSWORD')
         useInMemoryPgpKeys(signingKey, signingPassword)
 
@@ -112,73 +98,12 @@ signing {
 }
 
 javadoc {
-    if(JavaVersion.current().isJava9Compatible()) {
+    if (JavaVersion.current().isJava9Compatible()) {
         options.addBooleanOption('html5', true)
     }
 }
 
-tasks.register('repoZip', Zip) {
-    def repoDir = version.endsWith('SNAPSHOT') ? 'repos/snapshots' : 'repos/releases'
-    from layout.buildDirectory.dir(repoDir)
-    exclude '**/*.asc.*'
-}
-
-tasks.register('uploadToCentralPortal') {
-    dependsOn repoZip
-
-    doLast {
-        def uploadUrl = 'https://central.sonatype.com/api/v1/publisher/upload?publishingType=AUTOMATIC'
-        def statusUrl = 'https://central.sonatype.com/api/v1/publisher/status?id='
-        def uploadToken = System.getenv('MAVEN_UPLOAD_TOKEN')
-        File file = repoZip.archivePath
-
-        try (def httpclient = HttpClients.createDefault()) {
-            def httpPost = ClassicRequestBuilder.post(uploadUrl)
-                    .setHeader('Authorization', "Bearer ${uploadToken}")
-                    .setEntity(MultipartEntityBuilder.create().addBinaryBody('bundle', file).build())
-                    .build()
-            def deploymentId = httpclient.execute(httpPost, response -> {
-                def responseBody = EntityUtils.toString(response.getEntity())
-
-                if (response.getCode() != 201) {
-                    throw new RuntimeException("Response status: ${response.getCode()}, Response body: ${responseBody}")
-                } else {
-                    logger.info("Response status: ${response.getCode()}, Response body: ${responseBody}")
-                    return responseBody
-                }
-            })
-
-            def count = 0
-            while (count < 5) {
-                httpPost = ClassicRequestBuilder.post(statusUrl + deploymentId)
-                        .setHeader('Authorization', "Bearer ${uploadToken}")
-                        .build()
-                def deploymentState = httpclient.execute(httpPost, response -> {
-                    def responseBody = EntityUtils.toString(response.getEntity())
-
-                    if (response.getCode() != 200) {
-                        throw new RuntimeException("Response status: ${response.getCode()}, Response body: ${responseBody}")
-                    } else {
-                        def jsonObject = new JsonSlurper().parseText(responseBody)
-
-                        if (jsonObject.deploymentState == 'FAILED') {
-                            throw new RuntimeException("Upload status: ${jsonObject.deploymentState}, Response body: ${responseBody}")
-                        } else {
-                            println("Upload status: ${jsonObject.deploymentState}, Response body: ${responseBody}")
-                            return jsonObject.deploymentState
-                        }
-                    }
-                })
-
-                if (deploymentState == 'PUBLISHING' || deploymentState == 'PUBLISHED') {
-                    logger.info("Upload file success!")
-                    println("Upload file success, current status: ${deploymentState}")
-                    return
-                } else {
-                    count++
-                    Thread.sleep(5000)
-                }
-            }
-        }
-    }
+mavenCentral {
+    repoDir = layout.buildDirectory.dir('repos/bundles')
+    authToken = System.getenv('MAVEN_UPLOAD_TOKEN')
 }
