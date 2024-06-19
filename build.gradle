@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'tech.yanand'
-version = '0.1.1-beta.2'
+version = '0.1.1-beta.3'
 
 repositories {
     mavenCentral()
