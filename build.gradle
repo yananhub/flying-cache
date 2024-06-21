@@ -2,11 +2,11 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'signing'
-    id 'tech.yanand.gradle.maven-central-publish' version '0.1.0-beta.3'
+    id 'tech.yanand.gradle.maven-central-publish' version '0.1.0-beta.4'
 }
 
 group = 'tech.yanand'
-version = '0.1.1-beta.3'
+version = '0.1.1-beta.4'
 
 repositories {
     mavenCentral()
@@ -77,17 +77,6 @@ publishing {
             name = "Local"
             url = layout.buildDirectory.dir('repos/bundles')
         }
-
-        if (System.getenv("GHUB_ACTOR")) {
-            maven {
-                name = "GitHubPackages"
-                url = "https://maven.pkg.github.com/yananhub/flying-cache"
-                credentials {
-                    username = System.getenv("GHUB_ACTOR")
-                    password = System.getenv("GHUB_TOKEN")
-                }
-            }
-        }
     }
 }
 
@@ -102,9 +91,7 @@ signing {
 }
 
 javadoc {
-    if (JavaVersion.current().isJava9Compatible()) {
-        options.addBooleanOption('html5', true)
-    }
+    options.addBooleanOption('html5', true)
 }
 
 mavenCentral {
